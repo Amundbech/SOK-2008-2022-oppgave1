@@ -1,0 +1,108 @@
+---
+title: "Innlevering 1"
+author: "Amund"
+date: '2022-09-06'
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r cars}
+library(tidyverse)
+library(readxl) 
+library(ineq)
+library(PxWebApiData)
+library(gglorenz)
+library(janitor)
+
+setwd("/Users/amundbech1/Desktop/sok-2008")
+```
+
+#### Utfordring 1.3.5
+
+```{r}
+decile_data <- read_excel("GCIPrawdatatest.xlsx", skip = 2)  
+
+head(decile_data) 
+decile_data$gini <- 0
+
+noc <- nrow(decile_data)
+
+for (i in seq(1, noc)){
+  # Go to Row I to get the decile data
+  decs_i <- unlist(decile_data[i, 3:12])
+  decile_data$gini[i] <- Gini(decs_i)
+}
+
+temp_data <- subset(
+  decile_data, Country %in% c("United States","Sweden","Finland","Norway", 
+                              "Denmark"))
+```
+
+```{r}
+ggplot(temp_data, 
+       aes(x = Year, y = gini, color = Country)) +
+  geom_line(size = 1) +
+  theme_bw() +
+  ylab("Gini") +
+  ggtitle("Gini koeffisient for nordiske land og USA")
+```
+
+I diagrammet over vises gini koeffisienten for Danmark, Finland, Norge, Sverige og USA. Gini koeffisienten viser oss ulikheten i et land der 0 er perfekt likhet og 1 er perfekt ulikhet. Diagrammet viser at de nordiske landene har lang lavere gini indeks enn USA som ligger på cirka 0.4, mens de nordiske landene ligger mellom 0.3 og og 0.25. 
+
+Grunnen for de store forskjellene i gini koeffisient kan være at de nordiske landene har en annen måte å distriubere sin velferd på. De nordiske landene er velferdsstatet som tilbyr sine innbyggere forskjellige velferdstilbud som gjør at ulikheten går ned. Det er i tillegg langt lavere skatter i USA, mens i de nordiske landene er det mer vanlig med et progressivt skattesystem
+
+```{r}
+variables <- ApiData("https://data.ssb.no/api/v0/en/table/12558/", 
+                     returnMetaFrames = TRUE)
+names(variables)
+
+values <- ApiData("https://data.ssb.no/api/v0/en/table/12558/", 
+                  returnMetaData = TRUE)
+
+data <- ApiData("https://data.ssb.no/api/v0/en/table/12558/",
+                Tid =c("2005","2020"), # Velg årene 2005 og 2020
+                Desiler=c("01", "02", "03" ,"04", "05", "06" ,"07", "08" ,"09", "10"), #Vi velger alle desiler
+                InntektSkatt="00", #Vi velger samlet inntekt
+                ContentsCode="VerdiDesil", #Velger den høyeste verdien i desilen
+                Region=c("5401","1902")) #Tromsø endret kommunenummer i 2020
+```
+
+
+```{r}
+lorenz <- data %>% 
+  as.tibble(data)
+
+lorenz <- lorenz %>% 
+  clean_names()
+```
+
+
+```{r}
+plot1 <- lorenz %>% filter(lorenz$dataset$Tid =="2005") %>% 
+  ggplot(aes(dataset$value)) +
+  stat_lorenz(desc = FALSE) +
+  geom_abline(linetype = "dashed") +
+  ggtitle("Lorenz kurve Tromsø 2005") +  
+  xlab("Desiler") +
+  ylab("Desiler") +
+  theme_bw()
+plot1
+```
+
+```{r}
+plot2 <- lorenz %>% filter(lorenz$dataset$Tid =="2020") %>% 
+  ggplot(aes(dataset$value)) +
+  stat_lorenz(desc = FALSE) +
+  geom_abline(linetype = "dashed") +
+  ggtitle("Lorenz kurve Tromsø 2020") +  
+  xlab("Desiler") +
+  ylab("Desiler") +
+  theme_bw()
+plot2
+```
+
+Det vi ser med de to plottene er at lorenz kurven har endret seg svært lite mellom 2005 og 2020. Basert på figuren er det umulig å si noe om ulikhetene i Tromsø kommune.
